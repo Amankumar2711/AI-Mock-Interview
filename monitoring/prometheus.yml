@@ -1,0 +1,40 @@
+# =============================================================================
+# monitoring/prometheus.yml — Prometheus scrape configuration
+# =============================================================================
+#
+# Prometheus scrapes the FastAPI /metrics endpoint every 15 seconds.
+#
+# When running inside Docker Compose, the API is reachable via the service
+# name "api" on port 8000 (internal Docker network).
+#
+# To apply config changes without restarting the container:
+#   curl -X POST http://localhost:9090/-/reload
+# =============================================================================
+
+global:
+  scrape_interval:     15s   # match METRICS_POLL_INTERVAL_S in .env
+  evaluation_interval: 15s
+  external_labels:
+    project: "ai-interview"
+    env: "production"
+
+scrape_configs:
+
+  # ── FastAPI Application ─────────────────────────────────────────────────────
+  - job_name: "ai_interview_api"
+    static_configs:
+      - targets: ["api:8000"]
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  # Uncomment if you add redis_exporter to docker-compose.yml in the future.
+  # - job_name: "redis"
+  #   static_configs:
+  #     - targets: ["redis-exporter:9121"]
+
+  # ── Prometheus self-monitoring ──────────────────────────────────────────────
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

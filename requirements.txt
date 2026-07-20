@@ -1,0 +1,242 @@
+# =============================================================================
+# requirements.txt — AI-Interview Full Stack
+# Python: 3.12.10
+# Generated: 2026-06-29
+#
+# IMPORTANT — PyTorch (torch + torchaudio) are NOT listed here.
+# Install them FIRST using the official wheel index to get the correct
+# CUDA build (matches Dockerfile):
+#
+#   pip install torch==2.8.0 torchaudio==2.8.0 \
+#       --index-url https://download.pytorch.org/whl/cu126
+#
+# CPU-only alternative:
+#   pip install torch==2.8.0 torchaudio==2.8.0
+#
+# After that, install this file:
+#   pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu126
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# Web Framework — FastAPI + ASGI server
+# -----------------------------------------------------------------------------
+fastapi==0.115.12
+uvicorn[standard]==0.49.0
+python-multipart==0.0.32
+
+
+
+# -----------------------------------------------------------------------------
+# Data validation / settings
+# -----------------------------------------------------------------------------
+pydantic==2.13.4
+pydantic-settings==2.14.2
+annotated-types==0.7.0
+
+
+# -----------------------------------------------------------------------------
+# Task queue — Celery + Redis broker
+# -----------------------------------------------------------------------------
+celery[redis]==5.6.3
+redis==6.4.0
+kombu==5.6.2
+billiard==4.2.1
+vine==5.1.0
+amqp==5.3.1
+click-didyoumean==0.3.1
+click-plugins==1.1.1
+click-repl==0.3.0
+prompt-toolkit==3.0.51
+
+
+# -----------------------------------------------------------------------------
+# Async HTTP client — LLM backend (Ollama / vLLM)
+# -----------------------------------------------------------------------------
+httpx==0.28.1
+httpcore==1.0.9
+anyio==4.9.0
+sniffio==1.3.1
+h11==0.16.0
+aiohttp==3.14.1
+aiosignal==1.4.0
+frozenlist==1.6.2
+multidict==6.4.4
+yarl==1.20.1
+
+
+# -----------------------------------------------------------------------------
+# Sync HTTP — semantic eval / external API calls
+# -----------------------------------------------------------------------------
+requests==2.34.2
+urllib3==2.4.0
+certifi==2025.4.26
+charset-normalizer==3.4.2
+idna==3.10
+
+
+# -----------------------------------------------------------------------------
+# Environment / configuration
+# -----------------------------------------------------------------------------
+python-dotenv==1.2.2
+setuptools==80.9.0
+
+# -----------------------------------------------------------------------------
+# Observability — Prometheus metrics
+# -----------------------------------------------------------------------------
+prometheus-client==0.25.0
+prometheus-fastapi-instrumentator==7.0.2
+starlette==0.41.3
+
+
+# -----------------------------------------------------------------------------
+# Structured logging
+# -----------------------------------------------------------------------------
+structlog==26.1.0
+loguru==0.7.3
+
+
+# -----------------------------------------------------------------------------
+# HuggingFace ecosystem
+# (transformers pinned to 4.x — required by whisperx and speechbrain)
+# -----------------------------------------------------------------------------
+transformers==4.51.3
+huggingface-hub==0.30.2
+tokenizers==0.21.1
+safetensors==0.5.3
+datasets==3.6.0
+accelerate==1.7.0
+filelock==3.18.0
+regex==2024.11.6          # explicit pin — transformers dep, auto-resolve fails on Windows Py3.12
+
+
+# -----------------------------------------------------------------------------
+# ASR — WhisperX (word-level timestamps + forced alignment)
+# -----------------------------------------------------------------------------
+whisperx==3.8.6
+faster-whisper==1.2.1
+ctranslate2==4.5.0
+pyannote.audio==4.0.5        # whisperx 3.8.6 requires >=4.0.0
+# pyannote.core / .database / .metrics / .pipeline are sub-deps of pyannote.audio
+# — do NOT pin them explicitly; let pyannote.audio 4.x resolve them automatically
+pytorch-lightning==2.5.1
+lightning-utilities==0.14.3
+
+
+# -----------------------------------------------------------------------------
+# Audio processing — core
+# -----------------------------------------------------------------------------
+librosa==0.11.0
+soundfile==0.14.0
+audioread==3.0.1
+soxr==0.5.0.post1
+pydub==0.25.1
+scipy==1.15.3
+numpy==2.4.6
+resampy==0.4.3
+pooch==1.8.2
+
+
+# -----------------------------------------------------------------------------
+# Speech features — tone / emotion analysis
+# -----------------------------------------------------------------------------
+speechbrain==1.0.3
+opensmile==2.6.0
+praat-parselmouth==0.4.7
+
+
+# -----------------------------------------------------------------------------
+# Pronunciation pipeline — G2P + Wav2Vec2
+# -----------------------------------------------------------------------------
+g2p-en==2.1.0
+phonemizer-fork==3.3.2        # replaces phonemizer — keeps EspeakWrapper.set_data_path() that misaki 0.9.4 requires
+
+# Wav2Vec2 model comes from `transformers` (see HuggingFace block above)
+
+
+# -----------------------------------------------------------------------------
+# TTS — Kokoro (American English)
+# System requirement: espeak-ng must be installed (apt / brew / choco)
+# -----------------------------------------------------------------------------
+kokoro==0.9.4
+misaki[en]==0.9.4
+
+
+# -----------------------------------------------------------------------------
+# Semantic / technical evaluation
+# -----------------------------------------------------------------------------
+sentence-transformers==5.6.0
+
+
+# -----------------------------------------------------------------------------
+# NLP — spaCy (en_core_web_sm model downloaded separately)
+# python -m spacy download en_core_web_sm
+# -----------------------------------------------------------------------------
+spacy==3.8.14
+spacy-legacy==3.0.12
+spacy-loggers==1.0.5
+thinc==8.3.13
+murmurhash==1.0.12
+cymem==2.0.11
+preshed==3.0.9
+wasabi==1.1.3
+srsly==2.5.3
+catalogue==2.0.10
+confection==1.3.2
+weasel==1.0.0
+typer==0.16.0
+
+
+# -----------------------------------------------------------------------------
+# Confidence module
+# -----------------------------------------------------------------------------
+sounddevice==0.5.5
+pyttsx3==2.99
+
+
+# -----------------------------------------------------------------------------
+# Data science utilities
+# -----------------------------------------------------------------------------
+pandas==2.2.3
+pyarrow==20.0.0
+scikit-learn==1.6.1
+joblib==1.5.1
+threadpoolctl==3.6.0
+
+
+# -----------------------------------------------------------------------------
+# Serialization / I/O utilities
+# -----------------------------------------------------------------------------
+msgpack==1.1.0
+orjson==3.10.18
+python-dateutil==2.9.0.post0
+six==1.17.0
+tzdata==2025.2
+
+
+# -----------------------------------------------------------------------------
+# Async / concurrency utilities
+# -----------------------------------------------------------------------------
+asyncio-throttle==1.0.2
+
+
+# -----------------------------------------------------------------------------
+# CLI helpers (Celery inspect CLI, etc.)
+# -----------------------------------------------------------------------------
+click==8.1.8
+tqdm==4.67.1
+rich==14.0.0
+
+
+# -----------------------------------------------------------------------------
+# Numeric / tensor utilities
+# -----------------------------------------------------------------------------
+einops==0.8.1
+opt-einsum==3.4.0
+
+
+# -----------------------------------------------------------------------------
+# Testing (optional — remove in production image)
+# -----------------------------------------------------------------------------
+pytest==8.4.1
+pytest-asyncio==0.26.0

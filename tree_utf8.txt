@@ -1,0 +1,245 @@
+﻿Folder PATH listing for volume Windows
+Volume serial number is 0000007C 9048:2C9E
+C:.
+ª   .dockerignore
+ª   .env.example
+ª   .gitignore
+ª   docker-compose.yml
+ª   Dockerfile
+ª   logger.py
+ª   logger_setup.py
+ª   README.md
+ª   requirements.txt
+ª   tree.txt
+ª   
++---.github
+ª   +---workflows
+ª           deploy.yml
+ª           
++---api
+ª   ª   config.py
+ª   ª   dependencies.py
+ª   ª   logging_config.py
+ª   ª   main.py
+ª   ª   models.py
+ª   ª   session_store.py
+ª   ª   __init__.py
+ª   ª   
+ª   +---routers
+ª   ª       evaluate.py
+ª   ª       health.py
+ª   ª       sessions.py
+ª   ª       tts.py
+ª   ª       ws.py
+ª   ª       __init__.py
+ª   ª       
+ª   +---workers
+ª           celery_app.py
+ª           tasks.py
+ª           warmup.py
+ª           __init__.py
+ª           
++---confidence
+ª   ª   .gitignore
+ª   ª   README.md
+ª   ª   requirements.txt
+ª   ª   
+ª   +---app
+ª       ª   interview_runner.py
+ª       ª   main.py
+ª       ª   __init__.py
+ª       ª   
+ª       +---api
+ª       ª       egemaps.py
+ª       ª       health.py
+ª       ª       preprocess.py
+ª       ª       
+ª       +---config_conf
+ª       ª       settings.py
+ª       ª       
+ª       +---schemas
+ª       ª       request.py
+ª       ª       response.py
+ª       ª       
+ª       +---services
+ª       ª       audio_confidence_analyzer.py
+ª       ª       audio_preprocessing.py
+ª       ª       confidence_engine.py
+ª       ª       egemaps_extractor.py
+ª       ª       interview_pipeline.py
+ª       ª       question_generator.py
+ª       ª       question_speaker.py
+ª       ª       recommendation_engine.py
+ª       ª       recorder.py
+ª       ª       text_feature_extractor.py
+ª       ª       whisper_transcriber.py
+ª       ª       __init__.py
+ª       ª       
+ª       +---utils
+ª               audio_utils.py
+ª               file_utils.py
+ª               logger.py
+ª               
++---core_main
+ª       registry.py
+ª       
++---final_integration
+ª   ª   main.py
+ª   ª   run_ollama.py
+ª   ª   test_pipeline_logic.py
+ª   ª   __init__.py
+ª   ª   
+ª   +---config_integration
+ª   ª       config.py
+ª   ª       __init__.py
+ª   ª       
+ª   +---core_integration
+ª   ª       llm_client.py
+ª   ª       pipeline.py
+ª   ª       response_parser.py
+ª   ª       __init__.py
+ª   ª       
+ª   +---models_integration
+ª   ª       models.py
+ª   ª       __init__.py
+ª   ª       
+ª   +---text_files
+ª   ª       tell_us_about_yourself.txt
+ª   ª       
+ª   +---utils_integration
+ª           logger.py
+ª           __init__.py
+ª           
++---LLM_eval
+ª   ª   base.py
+ª   ª   docker-compose.yml
+ª   ª   Dockerfile
+ª   ª   Readme.md
+ª   ª   requirements.txt
+ª   ª   run_example.py
+ª   ª   run_ollama.py
+ª   ª   __init__.py
+ª   ª   
+ª   +---api_llm
+ª   ª       app.py
+ª   ª       routes.py
+ª   ª       
+ª   +---batching
+ª   ª       batch_manager.py
+ª   ª       dispatcher.py
+ª   ª       orchestrator.py
+ª   ª       
+ª   +---config_llm
+ª   ª       config.py
+ª   ª       settings.py
+ª   ª       __init__.py
+ª   ª       
+ª   +---core_llm
+ª   ª       batcher.py
+ª   ª       cache.py
+ª   ª       evaluation_service.py
+ª   ª       llm_client.py
+ª   ª       prompt_builder.py
+ª   ª       response_parser.py
+ª   ª       vllm_server.py
+ª   ª       __init__.py
+ª   ª       
+ª   +---models_llm
+ª   ª       models.py
+ª   ª       
+ª   +---scripts
+ª   ª       start_vllm_dev.sh
+ª   ª       start_vllm_prod.sh
+ª   ª       start_worker.sh
+ª   ª       
+ª   +---tests
+ª   ª       test_batch_manager.py
+ª   ª       test_evaluation_pipeline.py
+ª   ª       test_llm_client.py
+ª   ª       
+ª   +---utils_llm
+ª   ª       logger.py
+ª   ª       redis_client.py
+ª   ª       
+ª   +---workers
+ª           celery_app.py
+ª           eval_workers.py
+ª           
++---monitoring
+ª   ª   prometheus.yml
+ª   ª   
+ª   +---grafana
+ª       +---provisioning
+ª           +---datasources
+ª                   prometheus.yml
+ª                   
++---Pronunciation
+ª   ª   model_snapshot.py
+ª   ª   phoneme_costs.py
+ª   ª   pipeline.py
+ª   ª   README.md
+ª   ª   run_example.py
+ª   ª   scorer.py
+ª   ª   __init__.py
+ª   ª   
+ª   +---config_pron
+ª   ª       config.py
+ª   ª       
+ª   +---models_pron
+ª   ª       models.py
+ª   ª       
+ª   +---stages
+ª           alignment_stage.py
+ª           g2p_stage.py
+ª           wav2vec2_stage.py
+ª           
++---scripts
+ª   +---docker
+ª           download_extra_models.py
+ª           download_wav2vec2.py
+ª           download_whisper.py
+ª           
++---STT
+ª       asr_stage.py
+ª       
++---technical_eval
+ª   ª   guide.txt
+ª   ª   
+ª   +---config_tech
+ª   ª       config.py
+ª   ª       
+ª   +---core_tech
+ª   ª       semantic_eval.py
+ª   ª       
+ª   +---questions
+ª           answers.txt
+ª           
++---tone
+    ª   .gitignore
+    ª   README.md
+    ª   requirements.txt
+    ª   
+    +---app
+        ª   config.py
+        ª   main.py
+        ª   __init__.py
+        ª   
+        +---api
+        ª       routes.py
+        ª       __init__.py
+        ª       
+        +---schemas
+        ª       response.py
+        ª       __init__.py
+        ª       
+        +---services
+        ª       emotion_service.py
+        ª       energy_service.py
+        ª       pitch_service.py
+        ª       tone_service.py
+        ª       __init__.py
+        ª       
+        +---utils
+                logger.py
+                __init__.py
+                

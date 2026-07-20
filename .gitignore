@@ -1,0 +1,79 @@
+.venv
+.venv1
+venv/
+.env
+!.env.example
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Project specific
+extracted_features/
+logs/
+pretrained_models/
+processed_audio/
+transcripts/
+bin/
+wav2vec2_checkpoints/
+
+# Virtual Environments
+venv/
+env/
+.env
+
+# Temporary Audio / Video Files
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+mounya/audio/temp/
+tanuj_levenshtein/Pronunciation/audio/
+
+# Session Data & JSON outputs
+aman/app/interview/sessions/
+*.json
+!config.json
+!preprocessor_config.json
+
+# IDEs
+.vscode/
+.idea/
+
+# Pycache (already partially covered above, but good to be explicit)
+__pycache__/
+*.py[cod]
+
+#logs
+*.log
+logs/
+
+# Python cache and compiled bytecode
+__pycache__/
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+wav2vec2_base/
+question_data/

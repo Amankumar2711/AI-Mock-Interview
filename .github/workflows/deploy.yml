@@ -1,0 +1,110 @@
+name: Deploy — AI Interview
+
+on:
+  push:
+    branches: [devops]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: placemux-dev-ai-interview
+
+jobs:
+  build-and-deploy:
+    name: Build → ECR → EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 2. Free disk space on runner ─────────────────────────────────────
+      - name: Free disk space on runner
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
+
+      # ── 3. AWS auth ───────────────────────────────────────────────────────
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ── 4. ECR login ──────────────────────────────────────────────────────
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2.0.1
+
+      # ── 5. Build & push ───────────────────────────────────────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build, tag and push image to ECR
+        id: build
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          LATEST="$REGISTRY/$ECR_REPOSITORY:latest"
+
+          docker buildx build \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            --push \
+            -t "$IMAGE" \
+            -t "$LATEST" \
+            .
+
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+
+      # ── 6. Deploy on EC2 via SSH ──────────────────────────────────────────
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          ECR_IMAGE: ${{ steps.build.outputs.image }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: ECR_REGISTRY,ECR_IMAGE
+          command_timeout: 30m
+          script: |
+            set -e
+
+            echo "==> Authenticating with ECR..."
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+              docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+            echo "==> Pulling latest config from repo..."
+            cd /home/ubuntu/placemux-ecosystem-ai-interview
+            git pull origin devops
+
+            echo "==> Pulling new image..."
+            docker pull "$ECR_IMAGE"
+
+            echo "==> Tagging image..."
+            docker tag "$ECR_IMAGE" ai-interview:latest
+            docker tag "$ECR_IMAGE" placemux-ecosystem-ai-interview-api:latest
+            docker tag "$ECR_IMAGE" placemux-ecosystem-ai-interview-worker:latest
+
+            echo "==> Restarting api and worker..."
+            docker compose --profile prod up -d --no-build --force-recreate api worker
+
+            echo "==> Starting vllm services if not running..."
+            docker compose --profile prod up -d --no-build
+
+            echo "==> Pruning old images..."
+            docker image prune -f
+
+            echo "==> Done. Running containers:"
+            docker compose ps

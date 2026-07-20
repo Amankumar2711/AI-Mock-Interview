@@ -1,0 +1,80 @@
+# ── Infrastructure ────────────────────────────────────────────
+x-redis-env: &redis-env
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+
+x-app-env: &app-env
+  APP_RUN_MODE: ${APP_RUN_MODE:-dev}
+  APP_BACKEND: ${APP_BACKEND:-vllm}
+  VLLM_HOST: vllm
+  VLLM_PORT: 8000
+  APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+
+services:
+  # ── Redis ─────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+
+  # ── vLLM inference server ─────────────────────────────────
+  vllm:
+    image: vllm/vllm-openai:latest
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    ports:
+      - "8000:8000"
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+    command: >
+      --model ${VLLM_DEV_MODEL:-TheBloke/Mistral-7B-Instruct-v0.2-GPTQ}
+      --quantization ${VLLM_DEV_QUANTIZATION:-gptq}
+      --dtype float16
+      --gpu-memory-utilization ${VLLM_DEV_GPU_MEMORY_UTILIZATION:-0.60}
+      --max-model-len ${VLLM_DEV_MAX_MODEL_LEN:-2048}
+      --port 8000
+      --host 0.0.0.0
+
+  # ── FastAPI app ───────────────────────────────────────────
+  api:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    depends_on: [redis, vllm]
+    environment:
+      <<: [*redis-env, *app-env]
+    command: uvicorn api.app:app --host 0.0.0.0 --port 9000 --workers 2
+
+  # ── Celery workers (one per TaskType queue) ───────────────
+  worker:
+    build: .
+    restart: unless-stopped
+    depends_on: [redis, vllm]
+    environment:
+      <<: [*redis-env, *app-env]
+    command: >
+      celery -A workers.celery_app worker
+      --loglevel=info
+      --concurrency=${CELERY_WORKER_CONCURRENCY:-4}
+      --queues=eval_grammar_evaluation,eval_fluency_evaluation,eval_content_evaluation,eval_pronunciation_evaluation,eval_confidence_evaluation
+      --max-tasks-per-child=100
+
+  # ── Celery monitoring (optional) ──────────────────────────
+  flower:
+    image: mher/flower:2.0
+    restart: unless-stopped
+    ports:
+      - "5555:5555"
+    depends_on: [redis]
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+    command: celery flower --broker=redis://redis:6379/0 --port=5555

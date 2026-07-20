@@ -1,0 +1,19 @@
+# =============================================================================
+# monitoring/grafana/provisioning/datasources/prometheus.yml
+#
+# Auto-provisions Prometheus as a Grafana datasource on first boot.
+# No manual configuration needed — just open http://localhost:3000
+# =============================================================================
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: "15s"       # match Prometheus scrape_interval
+      httpMethod: POST

@@ -1,0 +1,8 @@
+correct answer:
+A decorator is a higher-order function in Python that accepts another function as an input. It uses a wrapper function to modify or enhance the original function's behavior and returns it. This design pattern allows you to cleanly inject reusable logic into multiple functions using the @ syntax.
+
+completely wrong:
+A decorator is a built-in database management system in Python used to optimize SQL queries. It automatically compiles Python dictionaries into binary files to speed up hard drive read and write operations. Developers use it strictly inside the terminal to install external libraries and manage virtual environments.
+
+wrong answer with correct keywords:
+To build a decorator, you must delete the original function and replace it with a text-based wrapper. This tool is used to modify the core Python compiler so that the programming syntax changes from English into binary code.

@@ -1,0 +1,154 @@
+# ==============================================================================
+# .dockerignore — AI-Interview Evaluation
+#
+# Goal: keep the Docker build context as small as possible.
+# Large directories like .venv, model weights, logs, and uploads are excluded
+# because they are either:
+#   a) installed inside the image from requirements.txt, or
+#   b) mounted as Docker volumes at runtime (see docker-compose.yml), or
+#   c) baked into the image at build time by Dockerfile RUN steps.
+#
+# Rule of thumb: if it isn't Python source code or a config file needed
+# at import time, it should be excluded here.
+# ==============================================================================
+
+
+# ── Version Control ────────────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+
+
+# ── Python Virtual Environments ────────────────────────────────────────────────
+# Never copy venvs — pip install inside the image is the correct approach.
+.venv/
+venv/
+env/
+wsl_venv/
+wsl_venv
+
+
+# ── Python Bytecode & Cache ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.pdb
+.Python
+
+
+# ── Build / Packaging Artifacts ────────────────────────────────────────────────
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+develop-eggs/
+downloads/
+lib/
+lib64/
+sdist/
+parts/
+var/
+.installed.cfg
+
+
+# ── Testing & Coverage ─────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.coveragerc
+nosetests.xml
+test-results/
+tests/__pycache__/
+
+
+# ── Type Checking & Linting ────────────────────────────────────────────────────
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+.pytype/
+
+
+# ── IDE & Editor Files ─────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+
+# ── Logs ───────────────────────────────────────────────────────────────────────
+# Logs are written to a Docker volume at runtime (see docker-compose.yml).
+# Baking existing log files into the image is never correct.
+logs/
+*.log
+
+
+# ── Uploaded Audio Files ───────────────────────────────────────────────────────
+# Uploads are stored in a Docker volume at runtime.
+# Audio files uploaded during local dev must not end up in the image.
+uploads/
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+*.webm
+
+
+# ── Model Weight Directories ───────────────────────────────────────────────────
+# These are either:
+#   - Downloaded at Dockerfile build time into /app/models/hf_cache (Wav2Vec2, Whisper)
+#   - Mounted as a named volume from pretrained_models/ at runtime
+# Copying them into the build context would bloat the image massively.
+pretrained_models/
+wav2vec2_checkpoints/
+extracted_features/
+
+
+# ── Local Development Data ─────────────────────────────────────────────────────
+question_data/
+
+
+# ── Environment Files ──────────────────────────────────────────────────────────
+# .env contains secrets — never bake it into an image layer.
+# Secrets are injected at runtime via docker-compose env_file or --env-file.
+.env
+.env.*
+!.env.example
+
+
+# ── Docker Files (not needed inside the image itself) ─────────────────────────
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+Dockerfile
+Dockerfile.*
+
+
+# ── Documentation ──────────────────────────────────────────────────────────────
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+LICENSE
+docs/
+*.md
+
+
+# ── Monitoring Config (mounted as volume at runtime) ──────────────────────────
+# Prometheus and Grafana configs are bind-mounted in docker-compose.yml.
+# They don't need to be baked into the api/worker image.
+monitoring/
+
+
+# ── Miscellaneous ──────────────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig

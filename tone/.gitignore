@@ -1,0 +1,15 @@
+venv/
+__pycache__/
+*.dll
+*.lib
+*.so
+*.pt
+*.bin
+*.onnx
+wav2vec2_checkpoints/
+models/
+data/
+.DS_Store
+AppData/
+Downloads/
+Desktop/

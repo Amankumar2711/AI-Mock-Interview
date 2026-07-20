@@ -1,0 +1,305 @@
+version: "3.9"
+
+# ──────────────────────────────────────────────────────────────────────────
+# AI-Interview Evaluation — Docker Compose
+#
+# Core services (always started):
+#   redis        — Message broker + result backend + session cache
+#   api          — FastAPI application (uvicorn) + /metrics endpoint
+#   worker       — Celery evaluation worker(s)
+#
+# Production LLM service (started with --profile prod):
+#   vllm         — Self-hosted vLLM OpenAI-compatible inference server
+#                  Requires: Linux host, NVIDIA GPU (12 GB+ VRAM recommended),
+#                  NVIDIA drivers, and NVIDIA Container Toolkit installed.
+#                  Model weights are cached in the hf_model_cache volume.
+#
+# Monitoring services (started with --profile monitoring):
+#   flower       — Celery task browser UI          (port 5555)
+#   prometheus   — Metrics scraper                 (port 9090)
+#   grafana      — Dashboards and alerting UI      (port 3000)
+#
+# Usage:
+#   docker-compose up --build                              # core only (dev/Ollama)
+#   docker-compose --profile prod up --build               # core + vLLM (production)
+#   docker-compose --profile monitoring up --build         # core + monitoring
+#   docker-compose --profile prod --profile monitoring up  # all services
+#
+# CELERY_POOL autodetect:
+#   celery_app.py detects the OS at import time:
+#     Linux / macOS → prefork  (multi-process, correct for prod)
+#     Windows       → solo     (safe fallback)
+#   To override, set CELERY_POOL in your .env file.
+#   To override concurrency, set WORKER_COUNT in your .env file.
+#
+# model_cache volume:
+#   /app/models/hf_cache is mounted as a named volume so Wav2Vec2 and
+#   Whisper weights survive container rebuilds and are shared between
+#   the api and worker services.
+#
+# hf_model_cache volume:
+#   /root/.cache/huggingface is mounted for the vLLM container so that
+#   LLM weights (e.g. Qwen2.5-7B-Instruct-AWQ) survive container restarts
+#   and do not need to be re-downloaded on each `docker-compose up`.
+# ──────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: ai_interview_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1
+      --appendonly no
+    ports:
+      - "6379"          # Internal only — not exposed on the host.
+                        # Services communicate via the Docker internal network.
+                        # Remove this expose block entirely if not needed for debugging.
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Application ───────────────────────────────────────────────────
+  api:
+    image: ${ECR_IMAGE:-ai-interview:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai_interview_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      HF_MODELS_CACHE: /app/models/hf_cache
+      LOCAL_FILES_ONLY: ${LOCAL_FILES_ONLY:-1}
+      # ── vLLM routing ────────────────────────────────────────────────────────
+      # VLLM_HOST/PORT are set so the LLMClient resolves to the vllm container
+      # name on the internal Docker network (not localhost, which is the container itself).
+      # In dev mode (LLM_BACKEND=ollama), these are ignored.
+      VLLM_HOST: vllm
+      VLLM_PORT: ${VLLM_PORT:-8001}
+      VLLM_BASE_URL: http://vllm:${VLLM_PORT:-8001}/v1
+      EMBEDDING_API_URL: ${EMBEDDING_API_URL:-http://vllm-embed:8002/v1/embeddings}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-Qwen/Qwen3-Embedding-0.6B}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./pretrained_models:/app/pretrained_models:ro
+      - model_cache:/app/models/hf_cache
+      - speechbrain_cache:/root/.local/share/speechbrain
+    depends_on:
+      redis:
+        condition: service_healthy
+      vllm:
+        condition: service_healthy
+        required: false
+      vllm-embed:
+        condition: service_healthy
+        required: false
+    command: >
+      uvicorn api.main:app
+        --host 0.0.0.0
+        --port 8000
+        --workers 2
+        --log-level info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Celery Worker ─────────────────────────────────────────────────────────
+  worker:
+    image: ${ECR_IMAGE:-ai-interview:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai_interview_worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      HF_MODELS_CACHE: /app/models/hf_cache
+      LOCAL_FILES_ONLY: ${LOCAL_FILES_ONLY:-1}
+      # ── vLLM routing ────────────────────────────────────────────────────────
+      VLLM_HOST: vllm
+      VLLM_PORT: ${VLLM_PORT:-8001}
+      VLLM_BASE_URL: http://vllm:${VLLM_PORT:-8001}/v1
+      EMBEDDING_API_URL: ${EMBEDDING_API_URL:-http://vllm-embed:8002/v1/embeddings}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-Qwen/Qwen3-Embedding-0.6B}
+      CUDA_VISIBLE_DEVICES: "0"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./pretrained_models:/app/pretrained_models
+      - model_cache:/app/models/hf_cache
+      - speechbrain_cache:/root/.local/share/speechbrain
+    depends_on:
+      redis:
+        condition: service_healthy
+      vllm:
+        condition: service_healthy
+        required: false
+      vllm-embed:
+        condition: service_healthy
+        required: false
+    command: >
+      celery -A api.workers.celery_app worker
+        --queues=evaluate,batch,celery
+        --pool=threads
+        --concurrency=${WORKER_COUNT:-2}
+        --loglevel=info
+        --logfile=/app/logs/api/celery.log
+    # ── GPU passthrough (Linux + NVIDIA Container Runtime) ─────────────────
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # ── vLLM Inference Server (production LLM backend) ──────────────────────────────
+  vllm:
+    # Pin to a specific tested version — never use :latest in production
+    # as a breaking vLLM API change could silently deploy.
+    # Update this version intentionally after testing.
+    image: vllm/vllm-openai:v0.9.0
+    container_name: ai_interview_vllm
+    restart: unless-stopped
+    # ── GPU passthrough (requires NVIDIA Container Toolkit on host) ─────────────
+    # Install guide: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      # HuggingFace token — required if using gated models (e.g. Llama, Mistral).
+      # Qwen2.5 is open-access and does NOT need a token, but set it anyway
+      # for higher rate limits during the initial model download.
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+    ports:
+      # Exposed on 8001 on the host to avoid clashing with the api service on 8000.
+      # Internal Docker network traffic goes through port 8001 directly.
+      - "${VLLM_PORT:-8001}:8001"
+    volumes:
+      # Persist downloaded model weights across restarts — prevents re-downloading
+      # the full model (e.g. 14 GB for Qwen2.5-7B) every time the container restarts.
+      - hf_model_cache:/root/.cache/huggingface
+    command: >
+      --model ${VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}
+      --host 0.0.0.0
+      --port 8001
+      --dtype ${VLLM_DTYPE:-float16}
+      --quantization ${VLLM_QUANTIZATION:-awq}
+      --max-model-len ${VLLM_MAX_MODEL_LEN:-4096}
+      --gpu-memory-utilization ${VLLM_GPU_MEM_UTIL:-0.60}
+      --tensor-parallel-size ${VLLM_TENSOR_PARALLEL:-1}
+      --served-model-name ${VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}
+      --enable-prefix-caching
+      --trust-remote-code
+    healthcheck:
+      # The /health endpoint returns 200 once the model is fully loaded and ready.
+      # start_period is long because large models can take 3-5 minutes to load on first boot.
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 600s
+    profiles:
+      - prod
+
+  # ── vLLM Embedding Server (Qwen3-Embedding-0.6B) ─────────────────────────────
+  vllm-embed:
+    image: vllm/vllm-openai:v0.9.0
+    container_name: ai_interview_vllm_embed
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+    ports:
+      - "${VLLM_EMBED_PORT:-8006}:8002"
+    volumes:
+      - hf_model_cache:/root/.cache/huggingface
+    command: >
+      --model ${EMBEDDING_MODEL_NAME:-Qwen/Qwen3-Embedding-0.6B}
+      --host 0.0.0.0
+      --port 8002
+      --dtype ${VLLM_DTYPE:-float16}
+      --max-model-len ${VLLM_EMBED_MAX_LEN:-512}
+      --gpu-memory-utilization ${VLLM_EMBED_GPU_MEM_UTIL:-0.20}
+      --served-model-name ${EMBEDDING_MODEL_NAME:-Qwen/Qwen3-Embedding-0.6B}
+      --trust-remote-code
+      --task embed
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+    profiles:
+      - prod
+
+  # ── Prometheus ──────────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: ai_interview_prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"    # keep 15 days of metrics history
+      - "--web.enable-lifecycle"               # allow hot-reload of config
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - api
+    profiles:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis_data:
+    driver: local
+  model_cache:
+    driver: local
+  hf_model_cache:
+    driver: local
+  speechbrain_cache:
+    driver: local
+  prometheus_data:
+    driver: local
